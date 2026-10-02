@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma.module';
 import { OrdersModule } from './orders/orders.module';
 import { ExceptionsModule } from './exceptions/exceptions.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CorrelationModule } from './correlation/correlation.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     OrdersModule,
     ExceptionsModule,
     MonitoringModule,
+    CorrelationModule,
   ],
 })
 export class AppModule {}
