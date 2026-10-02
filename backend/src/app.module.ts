@@ -5,6 +5,7 @@ import { OrdersModule } from './orders/orders.module';
 import { ExceptionsModule } from './exceptions/exceptions.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { CorrelationModule } from './correlation/correlation.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CorrelationModule } from './correlation/correlation.module';
     ExceptionsModule,
     MonitoringModule,
     CorrelationModule,
+    AiModule,
   ],
 })
 export class AppModule {}
