@@ -1,0 +1,329 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderState {
+  ORDER_CREATED
+  PAYMENT_PENDING
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  INVOICE_PENDING
+  INVOICE_CREATED
+  OMS_PENDING
+  OMS_SUBMITTED
+  OMS_SUBMISSION_FAILED
+  ALLOCATED
+  UNALLOCATED
+  SHIPMENT_PENDING
+  SHIPMENT_CREATED
+  SHIPPED
+  DELIVERED
+  CANCEL_REQUESTED
+  CANCEL_PROCESSING
+  CANCELLED
+  CANCEL_FAILED
+  REFUND_PENDING
+  REFUND_PROCESSING
+  REFUNDED
+  REFUND_FAILED
+}
+
+enum OrderChannel {
+  WEB
+  MOBILE
+  POS
+  CLICK_AND_COLLECT
+  MARKETPLACE
+  OTHER
+}
+
+enum EventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum ExceptionSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ExceptionStatus {
+  OPEN
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+  IGNORED
+}
+
+enum ActionType {
+  RETRY
+  CANCEL
+  REFUND
+  RESYNC
+  REPROCESS
+  ESCALATE
+  NOTIFY
+}
+
+enum ActionStatus {
+  REQUESTED
+  APPROVED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  REJECTED
+}
+
+enum DiagnosisStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum IntegrationStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+  UNKNOWN
+}
+
+enum MetricType {
+  PHP_MEMORY
+  PHP_FPM_RSS
+  PHP_FPM_PROCESS_COUNT
+  API_LATENCY
+  API_ERROR_RATE
+  DATABASE_CONNECTIONS
+  REDIS_MEMORY
+  RABBITMQ_QUEUE_DEPTH
+  OTHER
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model Order {
+  id                  String              @id @default(cuid())
+  externalOrderId     String              @unique
+  incrementId         String              @unique
+  customerId          String?
+  channel             OrderChannel        @default(WEB)
+  store               String?
+  currentState        OrderState          @default(ORDER_CREATED)
+  previousState       OrderState?
+  paymentStatus       String?
+  invoiceStatus       String?
+  omsStatus           String?
+  shipmentStatus      String?
+  refundStatus        String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  lastEventAt         DateTime?
+
+  events              OrderEvent[]
+  stateHistory        OrderStateHistory[]
+  exceptions          OrderException[]
+  actions             OrderAction[]
+  diagnoses           AiDiagnosis[]
+
+  @@index([currentState])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model OrderEvent {
+  id              String       @id @default(cuid())
+  orderId         String
+  eventType       String
+  source          String
+  eventId         String?
+  payload         Json
+  occurredAt      DateTime
+  processedAt     DateTime?
+  status          EventStatus  @default(RECEIVED)
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([source, occurredAt])
+  @@unique([source, eventId])
+}
+
+model OrderStateHistory {
+  id          String      @id @default(cuid())
+  orderId     String
+  fromState   OrderState?
+  toState     OrderState
+  reason      String?
+  eventId     String?
+  changedAt   DateTime    @default(now())
+
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, changedAt])
+}
+
+model OrderException {
+  id              String           @id @default(cuid())
+  orderId         String
+  code            String
+  title           String
+  description     String?
+  severity        ExceptionSeverity
+  status          ExceptionStatus  @default(OPEN)
+  firstDetectedAt DateTime         @default(now())
+  lastDetectedAt  DateTime         @default(now())
+  resolvedAt      DateTime?
+  evidence        Json?
+
+  order           Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  diagnoses       AiDiagnosis[]
+  actions         OrderAction[]
+
+  @@index([status, severity])
+  @@index([orderId, status])
+  @@index([code, firstDetectedAt])
+}
+
+model OrderAction {
+  id             String          @id @default(cuid())
+  orderId        String
+  exceptionId    String?
+  type           ActionType
+  status         ActionStatus    @default(REQUESTED)
+  requestedBy    String?
+  approvedBy     String?
+  input          Json?
+  output         Json?
+  errorMessage   String?
+  requestedAt    DateTime        @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  exception      OrderException? @relation(fields: [exceptionId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, requestedAt])
+  @@index([status, requestedAt])
+}
+
+model AiDiagnosis {
+  id             String          @id @default(cuid())
+  orderId        String
+  exceptionId    String?
+  status         DiagnosisStatus @default(PENDING)
+  summary        String?
+  probableCause  String?
+  confidence     Decimal?        @db.Decimal(5, 4)
+  evidence       Json?
+  recommendations Json?
+  model          String?
+  promptVersion  String?
+  createdAt      DateTime        @default(now())
+  completedAt    DateTime?
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  exception      OrderException? @relation(fields: [exceptionId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Integration {
+  id             String            @id @default(cuid())
+  name           String            @unique
+  type           String
+  status         IntegrationStatus @default(UNKNOWN)
+  endpoint       String?
+  lastCheckedAt  DateTime?
+  lastSuccessAt  DateTime?
+  lastFailureAt  DateTime?
+  latencyMs      Int?
+  errorRate      Decimal?          @db.Decimal(7, 4)
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status])
+}
+
+model SystemMetric {
+  id           String      @id @default(cuid())
+  metricType   MetricType
+  source       String
+  value        Decimal     @db.Decimal(20, 4)
+  unit         String?
+  metadata     Json?
+  recordedAt   DateTime    @default(now())
+
+  @@index([metricType, recordedAt])
+  @@index([source, recordedAt])
+}
+
+model PhpProcessMetric {
+  id             String    @id @default(cuid())
+  host           String
+  pid            Int
+  pool           String?
+  command        String?
+  rssBytes       BigInt
+  virtualBytes   BigInt?
+  peakBytes      BigInt?
+  cpuPercent     Decimal? @db.Decimal(7, 3)
+  requestUri     String?
+  requestId      String?
+  orderId        String?
+  capturedAt     DateTime  @default(now())
+
+  @@index([host, capturedAt])
+  @@index([pid, capturedAt])
+  @@index([orderId, capturedAt])
+}
+
+model Alert {
+  id          String       @id @default(cuid())
+  code        String
+  title       String
+  description String?
+  severity    ExceptionSeverity
+  status      AlertStatus  @default(OPEN)
+  source      String
+  metadata    Json?
+  openedAt    DateTime     @default(now())
+  resolvedAt  DateTime?
+
+  @@index([status, severity])
+  @@index([source, openedAt])
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  actorId     String?
+  action      String
+  entityType  String
+  entityId    String?
+  before      Json?
+  after       Json?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
