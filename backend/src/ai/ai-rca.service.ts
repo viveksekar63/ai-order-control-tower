@@ -100,7 +100,7 @@ export class AiRcaService {
           probableCause: parsed.probableCause,
           confidence: parsed.confidence,
           evidence: {
-            ...parsed.evidence,
+            items: parsed.evidence,
             sourceEvidence: evidence,
           } as Prisma.InputJsonValue,
           recommendations: parsed.recommendations as Prisma.InputJsonValue,
