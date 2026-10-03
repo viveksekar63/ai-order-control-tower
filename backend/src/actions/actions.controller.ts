@@ -12,14 +12,14 @@ export class ActionsController {
   constructor(private readonly actions: ActionsService) {}
 
   @Post()
-  @RequirePermission('order.reprocess.request')
+  @RequirePermission('order.action.request')
   request(@Body() dto: RequestActionDto, @Req() req: Request & { user?: { username: string } }) {
     dto.requestedBy = req.user!.username;
     return this.actions.request(dto);
   }
 
   @Post(':actionId/approve')
-  @RequirePermission('order.reprocess.approve')
+  @RequirePermission('order.action.approve')
   approve(@Param('actionId') actionId: string, @Req() req: Request & { user?: { username: string } }) {
     return this.actions.approve(actionId, req.user!.username);
   }
