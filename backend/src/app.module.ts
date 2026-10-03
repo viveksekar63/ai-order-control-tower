@@ -8,6 +8,7 @@ import { CorrelationModule } from './correlation/correlation.module';
 import { AiModule } from './ai/ai.module';
 import { ActionsModule } from './actions/actions.module';
 import { AuthModule } from './auth/auth.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AuthModule } from './auth/auth.module';
     AiModule,
     ActionsModule,
     AuthModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}
