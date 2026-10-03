@@ -52,7 +52,10 @@ export class ExceptionDetectorService {
 
   async scan() {
     const now = new Date();
-    const detected: Array<{ orderId: string; code: string; exceptionId: string }> = [];
+    const detected: Array<{ orderId: string; externalOrderId: string; code: string; exceptionId: string; status: ExceptionStatus; action: 'NEW' | 'ALREADY_OPEN' }> = [];
+    let ordersScanned = 0;
+    let newExceptions = 0;
+    let existingExceptions = 0;
 
     for (const rule of this.rules) {
       const cutoff = new Date(now.getTime() - rule.thresholdMinutes * 60_000);
@@ -77,6 +80,8 @@ export class ExceptionDetectorService {
         take: 500,
       });
 
+      ordersScanned += orders.length;
+
       for (const order of orders) {
         const existing = await this.prisma.orderException.findFirst({
           where: {
@@ -97,6 +102,15 @@ export class ExceptionDetectorService {
           await this.prisma.orderException.update({
             where: { id: existing.id },
             data: { lastDetectedAt: now },
+          });
+          existingExceptions += 1;
+          detected.push({
+            orderId: order.id,
+            externalOrderId: order.externalOrderId,
+            code: rule.code,
+            exceptionId: existing.id,
+            status: ExceptionStatus.OPEN,
+            action: 'ALREADY_OPEN',
           });
           continue;
         }
@@ -136,10 +150,14 @@ export class ExceptionDetectorService {
           },
         });
 
+        newExceptions += 1;
         detected.push({
           orderId: order.id,
+          externalOrderId: order.externalOrderId,
           code: rule.code,
           exceptionId: exception.id,
+          status: ExceptionStatus.OPEN,
+          action: 'NEW',
         });
       }
     }
@@ -148,6 +166,11 @@ export class ExceptionDetectorService {
       success: true,
       scannedAt: now,
       detectedCount: detected.length,
+      summary: {
+        ordersScanned,
+        newExceptions,
+        existingExceptions,
+      },
       detected,
     };
   }
