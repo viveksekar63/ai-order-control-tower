@@ -2,10 +2,14 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException }
 import { ActionStatus, ActionType, ExceptionStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { RequestActionDto } from './dto/request-action.dto';
+import { ActionPolicyService } from './action-policy.service';
 
 @Injectable()
 export class ActionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly policy: ActionPolicyService,
+  ) {}
 
   async request(dto: RequestActionDto) {
     const order = await this.prisma.order.findUnique({
@@ -36,7 +40,7 @@ export class ActionsService {
       }
     }
 
-    this.validateActionRequest(dto.type);
+    this.policy.assertRequestActor(dto.type, dto.requestedBy);
 
     const action = await this.prisma.orderAction.create({
       data: {
@@ -72,6 +76,8 @@ export class ActionsService {
     if (action.status !== ActionStatus.REQUESTED) {
       throw new ConflictException(`Only REQUESTED actions can be approved. Current status: ${action.status}`);
     }
+
+    this.policy.assertApprovalActor(action.type, action.requestedBy, actorId);
 
     const updated = await this.prisma.orderAction.update({
       where: { id: actionId },
@@ -199,14 +205,6 @@ export class ActionsService {
     }
 
     return action;
-  }
-
-  private validateActionRequest(type: ActionType) {
-    // All production-impacting actions are approval-gated.
-    // Real Magento/OMS adapters will be introduced after auth and permissions are in place.
-    if (!Object.values(ActionType).includes(type)) {
-      throw new BadRequestException(`Unsupported action type: ${type}`);
-    }
   }
 
   private async executeSafely(type: ActionType, input: Prisma.JsonValue | null) {
