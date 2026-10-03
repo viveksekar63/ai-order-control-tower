@@ -1,9 +1,7 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequirePermission } from '../auth/permissions.decorator';
 import { ActionsService } from './actions.service';
-import { ApprovalDto } from './dto/approval.dto';
 import { RequestActionDto } from './dto/request-action.dto';
 
 @Controller('actions')
@@ -13,7 +11,7 @@ export class ActionsController {
 
   @Post()
   @RequirePermission('order.action.request')
-  request(@Body() dto: RequestActionDto, @Req() req: Request & { user?: { username: string } }) {
+  request(@Body() dto: RequestActionDto, @Req() req: { user?: { username: string } }) {
     dto.requestedBy = req.user!.username;
     return this.actions.request(dto);
   }
@@ -25,7 +23,7 @@ export class ActionsController {
   }
 
   @Post(':actionId/reject')
-  @RequirePermission('order.reprocess.approve')
+  @RequirePermission('order.action.approve')
   reject(@Param('actionId') actionId: string, @Req() req: Request & { user?: { username: string } }) {
     return this.actions.reject(actionId, req.user!.username);
   }
