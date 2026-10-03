@@ -7,6 +7,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { CorrelationModule } from './correlation/correlation.module';
 import { AiModule } from './ai/ai.module';
 import { ActionsModule } from './actions/actions.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ActionsModule } from './actions/actions.module';
     CorrelationModule,
     AiModule,
     ActionsModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
