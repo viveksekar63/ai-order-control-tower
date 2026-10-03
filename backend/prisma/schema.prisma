@@ -209,7 +209,11 @@ model OrderAction {
   type           ActionType
   status         ActionStatus    @default(REQUESTED)
   requestedBy    String?
+  requestedByUser User? @relation("ActionRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  requestedByUserId String?
   approvedBy     String?
+  approvedByUser User? @relation("ActionApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId String?
   input          Json?
   output         Json?
   errorMessage   String?
@@ -316,6 +320,8 @@ model Alert {
 model AuditLog {
   id          String    @id @default(cuid())
   actorId     String?
+  actor       User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorUserId String?
   action      String
   entityType  String
   entityId    String?
@@ -326,4 +332,51 @@ model AuditLog {
 
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
+}
+
+
+model User {
+  id           String       @id @default(cuid())
+  username     String       @unique
+  passwordHash String
+  displayName  String
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  roles        UserRole[]
+  requestedActions OrderAction[] @relation("ActionRequester")
+  approvedActions  OrderAction[] @relation("ActionApprover")
+  auditLogs    AuditLog[]
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+  createdAt   DateTime     @default(now())
+}
+
+model Permission {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
 }
