@@ -220,7 +220,7 @@ export class ActionsService {
   }
 
   private async audit(
-    actorId: string | undefined,
+    actorId: string | null | undefined,
     action: string,
     entityType: string,
     entityId: string,
