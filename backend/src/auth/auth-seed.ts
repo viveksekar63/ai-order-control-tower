@@ -7,7 +7,7 @@ const permissions = [
   'order.retry.request','order.retry.approve','order.cancel.request','order.cancel.approve',
   'order.refund.request','order.refund.approve','order.resync.request','order.resync.approve',
   'order.reprocess.request','order.reprocess.approve','order.escalate.request','order.escalate.approve',
-  'order.notify.request','order.notify.approve','order.execute',
+  'order.notify.request','order.notify.approve','order.execute','order.action.request','order.action.approve',
 ];
 
 async function main() {
