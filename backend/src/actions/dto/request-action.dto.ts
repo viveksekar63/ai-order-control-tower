@@ -12,9 +12,8 @@ export class RequestActionDto {
   @IsEnum(ActionType)
   type!: ActionType;
 
-  @IsOptional()
   @IsString()
-  requestedBy?: string;
+  requestedBy!: string;
 
   @IsOptional()
   @IsObject()
