@@ -1,28 +1,37 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermission } from '../auth/permissions.decorator';
 import { ActionsService } from './actions.service';
 import { ApprovalDto } from './dto/approval.dto';
 import { RequestActionDto } from './dto/request-action.dto';
 
 @Controller('actions')
+@UseGuards(JwtAuthGuard)
 export class ActionsController {
   constructor(private readonly actions: ActionsService) {}
 
   @Post()
-  request(@Body() dto: RequestActionDto) {
+  @RequirePermission('order.reprocess.request')
+  request(@Body() dto: RequestActionDto, @Req() req: Request & { user?: { username: string } }) {
+    dto.requestedBy = req.user!.username;
     return this.actions.request(dto);
   }
 
   @Post(':actionId/approve')
-  approve(@Param('actionId') actionId: string, @Body() dto: ApprovalDto) {
-    return this.actions.approve(actionId, dto.actorId);
+  @RequirePermission('order.reprocess.approve')
+  approve(@Param('actionId') actionId: string, @Req() req: Request & { user?: { username: string } }) {
+    return this.actions.approve(actionId, req.user!.username);
   }
 
   @Post(':actionId/reject')
-  reject(@Param('actionId') actionId: string, @Body() dto: ApprovalDto) {
-    return this.actions.reject(actionId, dto.actorId);
+  @RequirePermission('order.reprocess.approve')
+  reject(@Param('actionId') actionId: string, @Req() req: Request & { user?: { username: string } }) {
+    return this.actions.reject(actionId, req.user!.username);
   }
 
   @Post(':actionId/execute')
+  @RequirePermission('order.execute')
   execute(@Param('actionId') actionId: string) {
     return this.actions.execute(actionId);
   }
